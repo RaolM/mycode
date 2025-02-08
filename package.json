@@ -60,7 +60,9 @@
     "zod": "^3.24.1",
     "@emotion/is-prop-valid": "latest",
     "firebase": "latest",
-    "framer-motion": "latest"
+    "framer-motion": "latest",
+    "react-syntax-highlighter": "latest",
+    "react-error-boundary": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

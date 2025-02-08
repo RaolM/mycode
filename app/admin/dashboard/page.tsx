@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
-import { Upload, Trash2, BarChart, Users, Code2 } from "lucide-react"
+import { Upload, Trash2, BarChart, Users, Code2, Github, PhoneIcon as WhatsApp } from "lucide-react"
 import { db } from "@/lib/firebase"
 import { collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, getCountFromServer } from "firebase/firestore"
 import CodeManagementTable from "@/components/CodeManagementTable"
@@ -26,6 +26,7 @@ interface CodeSnippet {
   date: string
   pluginType?: string
   category: string
+  type?: string
 }
 
 interface Stats {
@@ -40,24 +41,33 @@ export default function AdminDashboard() {
   const [uploading, setUploading] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [snippets, setSnippets] = useState<CodeSnippet[]>([])
+  const [scrapingSnippets, setScrapingSnippets] = useState<CodeSnippet[]>([])
   const [stats, setStats] = useState<Stats>({ totalPosts: 0, totalScrapingPosts: 0, totalUsers: 0 })
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     code: "",
+    code2: "",
     language: "JavaScript",
     category: "CASE",
     pluginType: "",
     watermark: "",
+    githubLink: "",
+    whatsappLink: "",
   })
   const [scrapingFormData, setScrapingFormData] = useState({
     title: "",
     description: "",
     code: "",
+    code2: "",
     language: "Python",
     category: "Web Scraping",
+    watermark: "",
+    githubLink: "",
+    whatsappLink: "",
   })
   const [scrapingUploading, setScrapingUploading] = useState(false)
+  const [activeTab, setActiveTab] = useState("upload")
 
   useEffect(() => {
     if (!loading && !user) {
@@ -91,7 +101,19 @@ export default function AdminDashboard() {
       setSnippets(snippetData)
     })
 
-    return () => unsubscribe()
+    const scrapingQ = query(collection(db, "scraping_snippets"), orderBy("date", "desc"))
+    const scrapingUnsubscribe = onSnapshot(scrapingQ, (querySnapshot) => {
+      const scrapingSnippetData: CodeSnippet[] = []
+      querySnapshot.forEach((doc) => {
+        scrapingSnippetData.push({ id: doc.id, ...(doc.data() as CodeSnippet), type: "scraping" })
+      })
+      setScrapingSnippets(scrapingSnippetData)
+    })
+
+    return () => {
+      unsubscribe()
+      scrapingUnsubscribe()
+    }
   }, [user])
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -121,10 +143,13 @@ export default function AdminDashboard() {
         title: "",
         description: "",
         code: "",
+        code2: "",
         language: "JavaScript",
         category: "CASE",
         pluginType: "",
         watermark: "",
+        githubLink: "",
+        whatsappLink: "",
       })
       router.push("/posts")
     } catch (error) {
@@ -151,8 +176,12 @@ export default function AdminDashboard() {
         title: "",
         description: "",
         code: "",
+        code2: "",
         language: "Python",
         category: "Web Scraping",
+        watermark: "",
+        githubLink: "",
+        whatsappLink: "",
       })
       router.push("/posts")
     } catch (error) {
@@ -169,6 +198,26 @@ export default function AdminDashboard() {
     } catch (error) {
       toast.error("Failed to delete code snippet")
     }
+  }
+
+  const handleScrapingDelete = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, "scraping_snippets", id))
+      toast.success("Scraping snippet deleted successfully!")
+    } catch (error) {
+      toast.error("Failed to delete scraping snippet")
+    }
+  }
+
+  const handleScrapingEdit = (snippet: CodeSnippet) => {
+    setScrapingFormData({
+      ...snippet,
+      code2: snippet.code2 || "",
+      watermark: snippet.watermark || "",
+      githubLink: snippet.githubLink || "",
+      whatsappLink: snippet.whatsappLink || "",
+    })
+    setActiveTab("scraping")
   }
 
   if (loading) {
@@ -217,6 +266,10 @@ export default function AdminDashboard() {
             <Trash2 className="w-4 h-4 mr-2" />
             <span className="hidden sm:inline">Manage Code</span>
           </TabsTrigger>
+          <TabsTrigger value="manage-scrape" className="data-[state=active]:bg-gray-700 flex-grow sm:flex-grow-0">
+            <Code2 className="w-4 h-4 mr-2" />
+            <span className="hidden sm:inline">Manage Scrape</span>
+          </TabsTrigger>
           <TabsTrigger value="analytics" className="data-[state=active]:bg-gray-700 flex-grow sm:flex-grow-0">
             <BarChart className="w-4 h-4 mr-2" />
             <span className="hidden sm:inline">Analytics</span>
@@ -264,6 +317,14 @@ export default function AdminDashboard() {
                       onChange={(e) => setFormData((prev) => ({ ...prev, code: e.target.value }))}
                       className="bg-gray-800 border-gray-700 text-white min-h-[200px]"
                       required
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Textarea
+                      placeholder="Code 2 (Optional)"
+                      value={formData.code2}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, code2: e.target.value }))}
+                      className="bg-gray-800 border-gray-700 text-white min-h-[200px]"
                     />
                   </div>
                   <div className="sm:col-span-2">
@@ -318,13 +379,37 @@ export default function AdminDashboard() {
                       className="bg-gray-800 border-gray-700 text-white"
                     />
                   </div>
+                  <div className="sm:col-span-2">
+                    <Input
+                      placeholder="GitHub Link (Optional)"
+                      value={formData.githubLink}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, githubLink: e.target.value }))}
+                      className="bg-gray-800 border-gray-700 text-white"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Input
+                      placeholder="WhatsApp Link (Optional)"
+                      value={formData.whatsappLink}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, whatsappLink: e.target.value }))}
+                      className="bg-gray-800 border-gray-700 text-white"
+                    />
+                  </div>
                 </div>
                 <Button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-purple-400 to-pink-500"
+                  className="w-full bg-gradient-to-r from-purple-400 to-pink-500 flex items-center justify-center"
                   disabled={uploading}
                 >
-                  {uploading ? "Uploading..." : "Upload Code Snippet"}
+                  {uploading ? (
+                    "Uploading..."
+                  ) : (
+                    <>
+                      Upload Code Snippet
+                      {formData.githubLink && <Github className="ml-2 h-4 w-4" />}
+                      {formData.whatsappLink && <WhatsApp className="ml-2 h-4 w-4" />}
+                    </>
+                  )}
                 </Button>
               </form>
             </CardContent>
@@ -338,6 +423,21 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent className="p-4 sm:p-6 overflow-x-auto">
               <CodeManagementTable snippets={snippets} onDelete={handleDelete} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="manage-scrape">
+          <Card className="bg-gray-900 border-gray-800">
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-white text-lg sm:text-xl">Manage Scraping Snippets</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6 overflow-x-auto">
+              <CodeManagementTable
+                snippets={scrapingSnippets}
+                onDelete={handleScrapingDelete}
+                onEdit={handleScrapingEdit}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -443,43 +543,53 @@ export default function AdminDashboard() {
                       required
                     />
                   </div>
-                  <div>
-                    <Select
-                      value={scrapingFormData.language}
-                      onValueChange={(value) => setScrapingFormData((prev) => ({ ...prev, language: value }))}
-                    >
-                      <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-                        <SelectValue placeholder="Select language" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Python">Python</SelectItem>
-                        <SelectItem value="JavaScript">JavaScript</SelectItem>
-                        <SelectItem value="Ruby">Ruby</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="sm:col-span-2">
+                    <Textarea
+                      placeholder="Code 2 (Optional)"
+                      value={scrapingFormData.code2}
+                      onChange={(e) => setScrapingFormData((prev) => ({ ...prev, code2: e.target.value }))}
+                      className="bg-gray-800 border-gray-700 text-white min-h-[200px]"
+                    />
                   </div>
-                  <div>
-                    <Select
-                      value={scrapingFormData.category}
-                      onValueChange={(value) => setScrapingFormData((prev) => ({ ...prev, category: value }))}
-                    >
-                      <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Web Scraping">Web Scraping</SelectItem>
-                        <SelectItem value="API Scraping">API Scraping</SelectItem>
-                        <SelectItem value="Data Extraction">Data Extraction</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="sm:col-span-2">
+                    <Input
+                      placeholder="Watermark (Optional)"
+                      value={scrapingFormData.watermark}
+                      onChange={(e) => setScrapingFormData((prev) => ({ ...prev, watermark: e.target.value }))}
+                      className="bg-gray-800 border-gray-700 text-white"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Input
+                      placeholder="GitHub Link (Optional)"
+                      value={scrapingFormData.githubLink}
+                      onChange={(e) => setScrapingFormData((prev) => ({ ...prev, githubLink: e.target.value }))}
+                      className="bg-gray-800 border-gray-700 text-white"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Input
+                      placeholder="WhatsApp Link (Optional)"
+                      value={scrapingFormData.whatsappLink}
+                      onChange={(e) => setScrapingFormData((prev) => ({ ...prev, whatsappLink: e.target.value }))}
+                      className="bg-gray-800 border-gray-700 text-white"
+                    />
                   </div>
                 </div>
                 <Button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-blue-600 to-blue-400"
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-400 flex items-center justify-center"
                   disabled={scrapingUploading}
                 >
-                  {scrapingUploading ? "Uploading..." : "Upload Scraping Snippet"}
+                  {scrapingUploading ? (
+                    "Uploading..."
+                  ) : (
+                    <>
+                      Upload Scraping Snippet
+                      {scrapingFormData.githubLink && <Github className="ml-2 h-4 w-4" />}
+                      {scrapingFormData.whatsappLink && <WhatsApp className="ml-2 h-4 w-4" />}
+                    </>
+                  )}
                 </Button>
               </form>
             </CardContent>

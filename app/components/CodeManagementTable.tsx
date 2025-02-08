@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Pencil, Trash2 } from "lucide-react"
 import { toast } from "sonner"
@@ -23,14 +23,17 @@ interface CodeSnippet {
   language: string
   author: string
   date: string
+  category: string
+  type: "regular" | "scraping"
 }
 
 interface CodeManagementTableProps {
   snippets: CodeSnippet[]
-  onDelete: (id: string) => Promise<void>
+  onDelete: (id: string, type: "regular" | "scraping") => Promise<void>
+  onEdit: (snippet: CodeSnippet) => void
 }
 
-export default function CodeManagementTable({ snippets, onDelete }: CodeManagementTableProps) {
+export default function CodeManagementTable({ snippets, onDelete, onEdit }: CodeManagementTableProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -39,7 +42,7 @@ export default function CodeManagementTable({ snippets, onDelete }: CodeManageme
 
     setIsDeleting(true)
     try {
-      await onDelete(deleteId)
+      await onDelete(deleteId, snippets.find((s) => s.id === deleteId)?.type || "regular")
       toast.success("Code snippet deleted successfully")
     } catch (error) {
       toast.error("Failed to delete code snippet")
@@ -59,6 +62,8 @@ export default function CodeManagementTable({ snippets, onDelete }: CodeManageme
               <TableHead className="text-gray-400 hidden sm:table-cell">Language</TableHead>
               <TableHead className="text-gray-400 hidden md:table-cell">Author</TableHead>
               <TableHead className="text-gray-400 hidden lg:table-cell">Date</TableHead>
+              <TableHead className="text-gray-400 hidden xl:table-cell">Category</TableHead>
+              <TableHead className="text-gray-400 hidden xl:table-cell">Type</TableHead>
               <TableHead className="text-gray-400 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -71,9 +76,11 @@ export default function CodeManagementTable({ snippets, onDelete }: CodeManageme
                 <TableCell className="text-gray-300 hidden lg:table-cell">
                   {new Date(snippet.date).toLocaleDateString()}
                 </TableCell>
+                <TableCell className="text-gray-300 hidden xl:table-cell">{snippet.category}</TableCell>
+                <TableCell className="text-gray-300 hidden xl:table-cell">{snippet.type}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
-                    <Button variant="ghost" size="icon" className="hover:bg-gray-800">
+                    <Button variant="ghost" size="icon" className="hover:bg-gray-800" onClick={() => onEdit(snippet)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <Button
