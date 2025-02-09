@@ -1,20 +1,16 @@
 import "./globals.css"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
-import type React from "react" // Import React
-import { AuthProvider } from "@/contexts/AuthContext"
 import Navbar from "./components/Navbar"
+import { AuthProvider } from "@/contexts/AuthContext"
 import { Toaster } from "sonner"
+import type React from "react" // Added import for React
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Your Website",
-  description: "Your website description",
-  // Add other metadata as needed
-  other: {
-    monetag: "031906f3bb6cbdec5103f3f652a96785",
-  },
+  title: "CodeShare",
+  description: "A simple and responsive source code sharing platform",
 }
 
 export default function RootLayout({
@@ -24,9 +20,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <head>
-        <meta name="monetag" content="031906f3bb6cbdec5103f3f652a96785" />
-      </head>
       <body className={`${inter.className} bg-gray-900 text-white min-h-screen`}>
         <AuthProvider>
           <Navbar />
